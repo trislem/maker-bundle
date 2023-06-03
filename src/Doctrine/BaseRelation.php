@@ -28,7 +28,8 @@ abstract class BaseRelation
         private bool $isOwning = false,
         private bool $orphanRemoval = false,
         private bool $isNullable = false,
-        private array $cascade = []
+        private array $cascade = [],
+        private array $additionnalAttributes = []
     ) {
     }
 
@@ -90,5 +91,10 @@ abstract class BaseRelation
     public function getCascade(): array
     {
         return $this->cascade;
+    }
+
+    public function getAdditionnalAttributes(): array
+    {
+        return $this->additionnalAttributes;
     }
 }

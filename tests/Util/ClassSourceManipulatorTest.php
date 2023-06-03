@@ -13,6 +13,12 @@ namespace Symfony\Bundle\MakerBundle\Tests\Util;
 
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\InverseJoinColumn;
+use Doctrine\ORM\Mapping\JoinTable;
+use Doctrine\ORM\Mapping\ManyToMany;
+use Doctrine\ORM\Mapping\ManyToOne;
+use Doctrine\ORM\Mapping\OneToMany;
+use Doctrine\ORM\Mapping\OneToOne;
 use PhpParser\Builder\Param;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\MakerBundle\Doctrine\RelationManyToMany;
@@ -562,6 +568,34 @@ class ClassSourceManipulatorTest extends TestCase
                 cascade: ['persist'],
             ),
         ];
+
+        yield 'many_to_many_join_table' => [
+            'User_simple.php',
+            'User_simple_join_table.php',
+            new RelationManyToMany(
+                propertyName: 'recipes',
+                targetClassName: \App\Entity\Recipe::class,
+                mapInverseRelation: false,
+                isOwning: true,
+                additionnalAttributes: [
+                    JoinTable::class => ['name' => 'users_have_recipes'],
+                ]
+            ),
+        ];
+
+        yield 'many_to_many_inverse_join_column' => [
+            'User_simple.php',
+            'User_simple_inverse_join_column.php',
+            new RelationManyToMany(
+                propertyName: 'recipes',
+                targetClassName: \App\Entity\Recipe::class,
+                mapInverseRelation: false,
+                isOwning: true,
+                additionnalAttributes: [
+                    InverseJoinColumn::class => ['name' => 'user_id', 'referencedColumnName' => 'id'],
+                ]
+            ),
+        ];
     }
 
     /**
@@ -693,6 +727,80 @@ class ClassSourceManipulatorTest extends TestCase
                 isNullable: true,
                 cascade: ['persist'],
             ),
+        ];
+    }
+
+    /**
+     * @dataProvider getCantHaveAnnotationTests
+     */
+    public function testCantHaveAnnotation(string $relation, string $mappingAttribute, string $method): void
+    {
+        $source = file_get_contents(__DIR__.'/fixtures/source/User_simple.php');
+        $manipulator = new ClassSourceManipulator($source, false);
+
+        $relation = new $relation(
+            propertyName: 'category',
+            targetClassName: \App\Entity\Category::class,
+            mapInverseRelation: false,
+            isOwning: true,
+            additionnalAttributes: [
+                $mappingAttribute => [],
+            ]
+        );
+
+        $this->expectException(\LogicException::class);
+
+        $manipulator->$method($relation);
+    }
+
+    public function getCantHaveAnnotationTests(): \Generator
+    {
+        yield 'many_to_one_join_table' => [
+            RelationManyToOne::class,
+            JoinTable::class,
+            'addManyToOneRelation',
+        ];
+
+        yield 'one_to_one_join_table' => [
+            RelationOneToOne::class,
+            JoinTable::class,
+            'addOneToOneRelation',
+        ];
+
+        yield 'one_to_many_join_table' => [
+            RelationOneToMany::class,
+            JoinTable::class,
+            'addOneToManyRelation',
+        ];
+
+        yield 'one_to_many_inverse_join_column' => [
+            RelationOneToMany::class,
+            InverseJoinColumn::class,
+            'addOneToManyRelation',
+        ];
+
+        yield 'many_to_many_additionnal_attribute' => [
+            RelationManyToMany::class,
+            ManyToMany::class,
+            'addManyToManyRelation',
+        ];
+
+        yield 'many_to_one_additionnal_attribute' => [
+            RelationManyToOne::class,
+            ManyToOne::class,
+            'addManyToOneRelation',
+        ];
+
+        yield 'one_to_many_additionnal_attribute' => [
+            RelationOneToMany::class,
+            OneToMany::class,
+            'addOneToManyRelation',
+        ];
+
+        yield 'one_to_one_additionnal_attribute' => [
+            RelationOneToOne::class,
+            OneToOne::class,
+            'addOneToOneRelation',
         ];
     }
 
